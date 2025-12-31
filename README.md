@@ -53,11 +53,35 @@ npm run dev:all
 3. Wait for the image to be generated (this may take 10-30 seconds)
 4. The generated image will appear in the output window
 
+## Deployment to Vercel
+
+1. **Push your code to GitHub**
+
+2. **Import to Vercel:**
+   - Go to [vercel.com](https://vercel.com)
+   - Click "New Project"
+   - Import your GitHub repository
+
+3. **Add Environment Variables in Vercel:**
+   - Go to Project Settings → Environment Variables
+   - Add these variables:
+     - `VITE_OPENROUTER_API_KEY` = your OpenRouter API key
+     - `VITE_HUGGINGFACE_API_KEY` = your Hugging Face API key (or `VITE_REPLICATE_API_KEY`)
+
+4. **Deploy:**
+   - Vercel will automatically detect the Vite project
+   - The API routes in `/api` will be deployed as serverless functions
+   - Your app will be available at `https://your-app.vercel.app`
+
+**Note:** The frontend automatically uses relative paths in production, so it will work with Vercel's serverless functions.
+
 ## Technologies
 
 - React 18
 - Vite
+- Express (for local development)
+- Vercel Serverless Functions (for production)
 - OpenRouter API (for prompt generation)
-- Replicate API (for image generation - recommended)
-- Hugging Face API (for image generation - fallback, may be deprecated)
+- Hugging Face API (for image generation)
+- Replicate API (for image generation - fallback)
 

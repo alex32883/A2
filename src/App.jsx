@@ -17,9 +17,12 @@ function App() {
     setError(null)
     setGeneratedImage(null)
 
+    // Get API base URL from environment variable or use relative path for production
+    const apiBaseUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3001' : '')
+
     try {
       // Step 1: Generate prompt using OpenRouter API via proxy
-      const promptResponse = await fetch('http://localhost:3001/api/generate-prompt', {
+      const promptResponse = await fetch(`${apiBaseUrl}/api/generate-prompt`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -49,7 +52,7 @@ function App() {
       const enhancedPrompt = promptData.prompt
 
       // Step 2: Generate image using Hugging Face API via proxy
-      const imageResponse = await fetch('http://localhost:3001/api/generate-image', {
+      const imageResponse = await fetch(`${apiBaseUrl}/api/generate-image`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
