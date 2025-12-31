@@ -4,6 +4,22 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
+  position: relative;
+}
+
+.date-time-display {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 10px 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-size: 0.9rem;
+  color: #333;
+  font-weight: 500;
+  z-index: 1000;
+  font-family: 'Courier New', monospace;
 }
 
 .container {
@@ -110,8 +126,10 @@
   width: 100%;
   padding: 20px;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 20px;
 }
 
 .generated-image {
@@ -150,6 +168,28 @@
 .loading p {
   color: #666;
   font-size: 1.1rem;
+}
+
+.save-button {
+  padding: 12px 30px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.save-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.save-button:active {
+  transform: translateY(0);
 }
 
 

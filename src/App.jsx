@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 
 function App() {
@@ -6,6 +6,16 @@ function App() {
   const [generatedImage, setGeneratedImage] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [currentDateTime, setCurrentDateTime] = useState(new Date())
+
+  // Update date and time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date())
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [])
 
   const generateImage = async () => {
     if (!inputText.trim()) {
@@ -95,8 +105,35 @@ function App() {
     }
   }
 
+  const saveImage = () => {
+    if (!generatedImage) return
+
+    // Create a temporary anchor element to trigger download
+    const link = document.createElement('a')
+    link.href = generatedImage
+    link.download = `generated-image-${Date.now()}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const formatDateTime = (date) => {
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    })
+  }
+
   return (
     <div className="app">
+      <div className="date-time-display">
+        {formatDateTime(currentDateTime)}
+      </div>
       <div className="container">
         <h1 className="title">AI Image Generator</h1>
         <p className="subtitle">Enter text to generate an image</p>
@@ -135,6 +172,12 @@ function App() {
           {generatedImage && !loading && (
             <div className="image-container">
               <img src={generatedImage} alt="Generated" className="generated-image" />
+              <button
+                className="save-button"
+                onClick={saveImage}
+              >
+                Save Image
+              </button>
             </div>
           )}
           {!generatedImage && !loading && (
