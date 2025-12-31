@@ -13,47 +13,19 @@ function App() {
       return
     }
 
-    // Validate API keys
-    const openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY
-    const huggingFaceKey = import.meta.env.VITE_HUGGINGFACE_API_KEY
-
-    if (!openRouterKey) {
-      setError('OpenRouter API key is missing. Please check your .env.local file.')
-      return
-    }
-
-    if (!huggingFaceKey) {
-      setError('Hugging Face API key is missing. Please check your .env.local file.')
-      return
-    }
-
     setLoading(true)
     setError(null)
     setGeneratedImage(null)
 
     try {
-      // Step 1: Generate prompt using OpenRouter API
-      const promptResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      // Step 1: Generate prompt using OpenRouter API via proxy
+      const promptResponse = await fetch('http://localhost:3001/api/generate-prompt', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
-          'HTTP-Referer': window.location.origin,
-          'X-Title': 'Image Generator App'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'openai/gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a prompt engineer. Convert the user\'s text into a detailed, descriptive prompt for image generation. Make it vivid and detailed, suitable for creating high-quality images.'
-            },
-            {
-              role: 'user',
-              content: `Create a detailed image generation prompt for: "${inputText}"`
-            }
-          ],
-          max_tokens: 200
+          text: inputText
         })
       })
 
@@ -61,7 +33,7 @@ function App() {
         let errorMessage = 'Failed to generate prompt'
         try {
           const errorData = await promptResponse.json()
-          errorMessage = errorData.error?.message || errorData.error || errorMessage
+          errorMessage = errorData.error || errorMessage
         } catch {
           errorMessage = `HTTP ${promptResponse.status}: ${promptResponse.statusText}`
         }
@@ -70,55 +42,37 @@ function App() {
 
       const promptData = await promptResponse.json()
       
-      if (!promptData.choices || !promptData.choices[0] || !promptData.choices[0].message) {
+      if (!promptData.prompt) {
         throw new Error('Invalid response from prompt generation service')
       }
       
-      const enhancedPrompt = promptData.choices[0].message.content
+      const enhancedPrompt = promptData.prompt
 
-      // Step 2: Generate image using Hugging Face API
-      const huggingFaceKey = import.meta.env.VITE_HUGGINGFACE_API_KEY
-      
-      if (!huggingFaceKey || huggingFaceKey.trim() === '') {
-        throw new Error('Hugging Face API key is not configured. Please check your .env.local file.')
-      }
-
-      const imageResponse = await fetch(
-        'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${huggingFaceKey.trim()}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            inputs: enhancedPrompt
-          })
-        }
-      )
+      // Step 2: Generate image using Hugging Face API via proxy
+      const imageResponse = await fetch('http://localhost:3001/api/generate-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: enhancedPrompt
+        })
+      })
 
       if (!imageResponse.ok) {
-        // Try to parse error as JSON first
         let errorMessage = 'Failed to generate image'
         try {
           const errorData = await imageResponse.json()
-          errorMessage = errorData.error || errorData.message || errorMessage
-          
-          // Handle specific authentication errors
-          if (errorMessage.includes('cookie') || errorMessage.includes('auth') || errorMessage.includes('credentials')) {
-            errorMessage = 'Authentication failed. Please check that your Hugging Face API key in .env.local is correct and has the "read" permission. Make sure to restart the dev server after updating .env.local.'
-          }
+          errorMessage = errorData.error || errorMessage
         } catch {
           const errorText = await imageResponse.text()
           errorMessage = errorText || errorMessage
-          
-          if (errorMessage.includes('cookie') || errorMessage.includes('auth') || errorMessage.includes('credentials')) {
-            errorMessage = 'Authentication failed. Please check that your Hugging Face API key in .env.local is correct and has the "read" permission. Make sure to restart the dev server after updating .env.local.'
-          }
         }
         
         if (imageResponse.status === 401 || imageResponse.status === 403) {
-          errorMessage = 'Authentication failed. Please verify your Hugging Face API key is correct in .env.local and restart the dev server.'
+          errorMessage = 'Authentication failed. Please verify your Hugging Face API key is correct in .env.local and restart the server.'
+        } else if (imageResponse.status === 410) {
+          errorMessage = 'The Hugging Face API endpoint is no longer available (410 Gone). The API may have been deprecated. Please check the server console for details or consider using an alternative image generation service.'
         } else if (imageResponse.status === 503) {
           errorMessage = 'Model is loading. Please wait a moment and try again.'
         }
@@ -126,13 +80,7 @@ function App() {
         throw new Error(errorMessage)
       }
 
-      // Check if response is actually an image
-      const contentType = imageResponse.headers.get('content-type')
-      if (!contentType || !contentType.startsWith('image/')) {
-        const errorData = await imageResponse.text()
-        throw new Error(`Unexpected response format: ${errorData}`)
-      }
-
+      // Get the image blob
       const imageBlob = await imageResponse.blob()
       const imageUrl = URL.createObjectURL(imageBlob)
       setGeneratedImage(imageUrl)
