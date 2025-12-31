@@ -13,6 +13,20 @@ function App() {
       return
     }
 
+    // Validate API keys
+    const openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY
+    const huggingFaceKey = import.meta.env.VITE_HUGGINGFACE_API_KEY
+
+    if (!openRouterKey) {
+      setError('OpenRouter API key is missing. Please check your .env.local file.')
+      return
+    }
+
+    if (!huggingFaceKey) {
+      setError('Hugging Face API key is missing. Please check your .env.local file.')
+      return
+    }
+
     setLoading(true)
     setError(null)
     setGeneratedImage(null)
@@ -63,12 +77,18 @@ function App() {
       const enhancedPrompt = promptData.choices[0].message.content
 
       // Step 2: Generate image using Hugging Face API
+      const huggingFaceKey = import.meta.env.VITE_HUGGINGFACE_API_KEY
+      
+      if (!huggingFaceKey || huggingFaceKey.trim() === '') {
+        throw new Error('Hugging Face API key is not configured. Please check your .env.local file.')
+      }
+
       const imageResponse = await fetch(
         'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_HUGGINGFACE_API_KEY}`,
+            'Authorization': `Bearer ${huggingFaceKey.trim()}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
@@ -83,12 +103,23 @@ function App() {
         try {
           const errorData = await imageResponse.json()
           errorMessage = errorData.error || errorData.message || errorMessage
+          
+          // Handle specific authentication errors
+          if (errorMessage.includes('cookie') || errorMessage.includes('auth') || errorMessage.includes('credentials')) {
+            errorMessage = 'Authentication failed. Please check that your Hugging Face API key in .env.local is correct and has the "read" permission. Make sure to restart the dev server after updating .env.local.'
+          }
         } catch {
           const errorText = await imageResponse.text()
           errorMessage = errorText || errorMessage
+          
+          if (errorMessage.includes('cookie') || errorMessage.includes('auth') || errorMessage.includes('credentials')) {
+            errorMessage = 'Authentication failed. Please check that your Hugging Face API key in .env.local is correct and has the "read" permission. Make sure to restart the dev server after updating .env.local.'
+          }
         }
         
-        if (imageResponse.status === 503) {
+        if (imageResponse.status === 401 || imageResponse.status === 403) {
+          errorMessage = 'Authentication failed. Please verify your Hugging Face API key is correct in .env.local and restart the dev server.'
+        } else if (imageResponse.status === 503) {
           errorMessage = 'Model is loading. Please wait a moment and try again.'
         }
         
